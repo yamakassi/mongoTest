@@ -1,0 +1,227 @@
+//1 пользователя с наиб кол-во транзакций
+db.collection.aggregate([
+  {
+    "$sort": {
+      "transaction_count": -1
+    }
+  },
+  {
+    $limit: 1
+  }
+])
+//2   дата последней транзакц//
+db.collection.find({
+  "bucket_end_date": {
+    $gte: "2016-12-09T00:00:00.000Z",
+    
+  }
+})
+//3 сред кол-во транзакц по магазинам
+db.collection.aggregate([
+  {
+    $unwind: "$transactions"
+  },
+  {
+    $project: {
+      _id: 0,
+      "account_id": 1,
+      "transactions": 1,
+      count: {
+        $add: [
+          1
+        ]
+      },
+      
+    }
+  },
+  {
+    $group: {
+      _id: "$transactions.symbol",
+      number: {
+        $sum: "$count"
+      },
+      avgAmount: {
+        $avg: "$transactions.amount"
+      }
+    },
+    
+  },
+  
+])
+
+//4 лучший магаз 
+db.collection.aggregate([
+  {
+    $unwind: "$transactions"
+  },
+  {
+    $project: {
+      _id: 0,
+      "account_id": 1,
+      "transactions": 1,
+      count: {
+        $add: [
+          1
+        ]
+      },
+      
+    }
+  },
+  {
+    $group: {
+      _id: "$transactions.symbol",
+      number: {
+        $sum: "$count"
+      },
+      avgAmount: {
+        $avg: "$transactions.amount"
+      }
+    },
+    
+  },
+  {
+    $sort: {
+      number: -1,
+      
+    }
+  },
+  {
+    $limit: 1
+  }
+])
+//5 поиск транзакций пользователей где присутствует кол-во <1000 техника amd и покупка
+db.collection.find({
+  "transactions": {
+    $elemMatch: { 
+      "amount": {
+        $lte: 1000,
+        
+      },
+      "symbol": "amd",
+      "transaction_code": "buy",
+      
+    }
+  },
+  
+})
+//6 транзакции за опред даты
+db.collection.aggregate([
+  {
+    $unwind: "$transactions"
+  },
+  {
+    "$match": {
+      "transactions.date": {
+        $gte: "2015-10-14T00:00:00.000Z",
+        $lte: "2015-10-21T00:00:00.000Z",
+        
+      }
+    }
+  },
+  
+])
+//7 вывод общ сумм
+db.collection.aggregate([
+  {
+    $unwind: "$transactions"
+  },
+  {
+    "$match": {
+      "transactions.transaction_code": "sell",
+      "transactions.symbol": "ebay"
+    }
+  },
+  {
+    "$group": {
+      "_id": "$account_id",
+      "total": {
+        "$sum": {
+          "$toDouble": "$transactions.total"
+        }
+      },
+      "count": {
+        "$sum": 1
+      }
+    }
+  },
+  
+])
+//8 топ 3 м
+db.collection.aggregate([
+  {
+    $unwind: "$transactions"
+  },
+  {
+    $project: {
+      _id: 0,
+      "account_id": 1,
+      "transactions": 1,
+      count: {
+        $add: [
+          1
+        ]
+      },
+      
+    }
+  },
+  {
+    $group: {
+      _id: "$transactions.symbol",
+      count: {
+        $sum: "$count"
+      },
+      "total": {
+        "$sum": {
+          "$toDouble": "$transactions.total"
+        }
+      },
+      
+    },
+    
+  },
+  {
+    $sort: {
+      total: -1,
+      
+    },
+    
+  },
+  {
+    "$limit": 3
+  }
+])
+//9 вывод средней суммы транзакций для каждого польз
+db.collection.aggregate([
+  {
+    $unwind: "$transactions"
+  },
+  {
+    "$match": {
+      "transactions.transaction_code": "sell",
+      
+    }
+  },
+  {
+    $group: {
+      _id: "$account_id",
+      totalAvgAccount: {
+        $avg: {
+          "$toDouble": "$transactions.total"
+        }
+      },
+      
+    },
+    
+  },
+  {
+    $sort: {
+      total: -1,
+      
+    },
+    
+  },
+  {
+    "$limit": 5
+  }
+])
+//10 вывести пользователя(его транзакции) за опред дату
